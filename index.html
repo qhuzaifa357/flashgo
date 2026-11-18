@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FlashGo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+    body { display: flex; flex-direction: column; height: 100vh; background: #121212; color: #fff; }
+    .toolbar { display: flex; gap: 8px; padding: 10px; background: #1e1e24; align-items: center; }
+    button { background: #2b2b36; color: #fff; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    button:hover { background: #3f3f4e; }
+    input { flex: 1; padding: 9px 14px; border-radius: 20px; border: 1px solid #333; background: #0d0d10; color: #fff; outline: none; font-size: 14px; }
+    input:focus { border-color: #4f8cff; }
+    webview { flex: 1; width: 100%; border: none; background: #fff; }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button onclick="view.goBack()">◀</button>
+    <button onclick="view.goForward()">▶</button>
+    <button onclick="view.reload()">↻</button>
+    <button onclick="goHome()">🏠</button>
+    <input id="url" type="text" placeholder="Search Google or type a URL..." onkeydown="if(event.key==='Enter') navigate()">
+    <button onclick="navigate()">Go</button>
+  </div>
+  <webview id="view" src="https://www.google.com"></webview>
+
+  <script>
+    const view = document.getElementById('view');
+    const urlInput = document.getElementById('url');
+
+    function navigate() {
+      let query = urlInput.value.trim();
+      if (!query) return;
+      if (query.includes('.') && !query.includes(' ')) {
+        if (!query.startsWith('http')) query = 'https://' + query;
+      } else {
+        query = 'https://www.google.com/search?q=' + encodeURIComponent(query);
+      }
+      view.loadURL(query);
+    }
+
+    function goHome() { view.loadURL('https://www.google.com'); }
+    view.addEventListener('did-navigate', (e) => { urlInput.value = e.url; });
+  </script>
+</body>
+</html>
