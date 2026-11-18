@@ -1,0 +1,21 @@
+{
+  "name": "flashgo",
+  "version": "1.0.0",
+  "description": "FlashGo - Fast Chromium-Based Browser",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.flashgo.browser",
+    "productName": "FlashGo",
+    "win": {
+      "target": "portable"
+    }
+  }
+}
