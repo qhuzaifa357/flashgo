@@ -1,7 +1,7 @@
 {
   "name": "flashgo",
-  "version": "1.0.0",
-  "description": "FlashGo - Fast Chromium-Based Browser",
+  "version": "2.0.0",
+  "description": "FlashGo 2.0 - Next-Gen Chromium Browser",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
