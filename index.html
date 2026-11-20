@@ -2,46 +2,412 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>FlashGo</title>
+  <title>FlashGo 2.0</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-    body { display: flex; flex-direction: column; height: 100vh; background: #121212; color: #fff; }
-    .toolbar { display: flex; gap: 8px; padding: 10px; background: #1e1e24; align-items: center; }
-    button { background: #2b2b36; color: #fff; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-    button:hover { background: #3f3f4e; }
-    input { flex: 1; padding: 9px 14px; border-radius: 20px; border: 1px solid #333; background: #0d0d10; color: #fff; outline: none; font-size: 14px; }
-    input:focus { border-color: #4f8cff; }
-    webview { flex: 1; width: 100%; border: none; background: #fff; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+    :root { --bg: #0f1117; --panel: #181b24; --btn: #252a37; --accent: #3b82f6; --text: #f1f5f9; --danger: #ef4444; }
+    body { display: flex; flex-direction: column; height: 100vh; background: var(--bg); color: var(--text); overflow: hidden; }
+
+    /* Top Bar */
+    .top-bar { display: flex; align-items: center; background: var(--panel); padding: 6px 10px; gap: 6px; border-bottom: 1px solid #2a3040; }
+    button { background: var(--btn); color: var(--text); border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: 0.15s; }
+    button:hover { background: #343b4d; }
+    button.active { background: var(--accent); color: #fff; }
+    button.fire { background: #7f1d1d; color: #fecaca; }
+    button.fire:hover { background: var(--danger); color: #fff; }
+
+    .url-box { flex: 1; display: flex; align-items: center; background: #090a0f; border: 1px solid #2e3548; border-radius: 20px; padding: 0 12px; }
+    .url-box input { flex: 1; background: transparent; border: none; color: #fff; padding: 7px 8px; outline: none; font-size: 13px; }
+    .shield-badge { font-size: 11px; color: #4ade80; font-weight: bold; }
+
+    /* Horizontal Tab Strip */
+    .tab-strip { display: flex; align-items: center; background: #13161f; padding: 4px 8px; gap: 4px; overflow-x: auto; border-bottom: 1px solid #242938; }
+    .tab-strip.hidden { display: none; }
+    .tab { display: flex; align-items: center; gap: 6px; background: #1e2230; padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; max-width: 180px; white-space: nowrap; }
+    .tab.active { background: var(--accent); color: #fff; }
+    .tab.pinned { border-left: 3px solid #facc15; }
+    .tab-title { overflow: hidden; text-overflow: ellipsis; }
+    .tab-close { font-size: 11px; opacity: 0.7; padding: 0 3px; }
+    .tab-close:hover { opacity: 1; color: #fca5a5; }
+
+    /* Main Workspace */
+    .workspace { display: flex; flex: 1; overflow: hidden; }
+
+    /* Left Sidebar (Vertical Tabs + Messengers + Tools) */
+    .sidebar { width: 46px; background: var(--panel); border-right: 1px solid #2a3040; display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 8px; transition: width 0.2s; }
+    .sidebar.vertical-open { width: 210px; align-items: stretch; padding: 8px; }
+    .side-icons { display: flex; flex-direction: column; gap: 6px; }
+    .sidebar.vertical-open .side-icons { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+    .v-tabs-list { display: none; flex-direction: column; gap: 4px; margin-top: 8px; overflow-y: auto; flex: 1; }
+    .sidebar.vertical-open .v-tabs-list { display: flex; }
+
+    /* Browser Views Container */
+    .views-area { flex: 1; display: flex; background: #fff; position: relative; }
+    .webview-wrap { flex: 1; display: none; height: 100%; border-right: 1px solid #333; }
+    .webview-wrap.visible { display: flex; }
+    webview { width: 100%; height: 100%; border: none; }
+
+    /* Right Drawer (AI / Notes / Settings / Bookmarks) */
+    .drawer { width: 320px; background: var(--panel); border-left: 1px solid #2a3040; display: none; flex-direction: column; padding: 12px; gap: 10px; }
+    .drawer.open { display: flex; }
+    .drawer textarea { flex: 1; background: #0b0d13; color: #fff; border: 1px solid #2e3548; border-radius: 8px; padding: 10px; resize: none; outline: none; }
+    .setting-row { display: flex; justify-content: space-between; align-items: center; background: #222736; padding: 8px 10px; border-radius: 6px; font-size: 13px; }
+
+    /* Command Palette (F2) */
+    .cmd-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none; justify-content: center; align-items: flex-start; padding-top: 80px; z-index: 999; }
+    .cmd-modal.open { display: flex; }
+    .cmd-box { width: 460px; background: var(--panel); border: 1px solid #3b445c; border-radius: 10px; padding: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+    .cmd-box input { width: 100%; padding: 10px; background: #0b0d13; border: 1px solid var(--accent); color: #fff; border-radius: 6px; outline: none; margin-bottom: 8px; }
+    .cmd-item { padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .cmd-item:hover { background: var(--accent); }
   </style>
 </head>
 <body>
-  <div class="toolbar">
-    <button onclick="view.goBack()">◀</button>
-    <button onclick="view.goForward()">▶</button>
-    <button onclick="view.reload()">↻</button>
-    <button onclick="goHome()">🏠</button>
-    <input id="url" type="text" placeholder="Search Google or type a URL..." onkeydown="if(event.key==='Enter') navigate()">
-    <button onclick="navigate()">Go</button>
+
+  <!-- Top Navigation & Controls -->
+  <div class="top-bar">
+    <button onclick="toggleVertical()" title="Vertical Tabs">◫</button>
+    <button onclick="activeView()?.goBack()" title="Back">◀</button>
+    <button onclick="activeView()?.goForward()" title="Forward">▶</button>
+    <button onclick="activeView()?.reload()" title="Reload">↻</button>
+    <button onclick="navigate('https://www.google.com')" title="Home">🏠</button>
+
+    <div class="url-box">
+      <span class="shield-badge" id="shieldStatus">🛡️ Shield ON</span>
+      <input id="urlInput" type="text" placeholder="Search Google or enter URL (F2 for Commands)..." onkeydown="if(event.key==='Enter') handleUrl()">
+    </div>
+
+    <button onclick="handleUrl()">Go</button>
+    <button id="splitBtn" onclick="toggleSplit()" title="Split Screen (2 Sites)">◫ Split</button>
+    <button onclick="toggleReader()" title="Reader View">📖</button>
+    <button onclick="addBookmark()" title="Bookmark Page">⭐</button>
+    <button onclick="takeScreenshot()" title="Screenshot">📷</button>
+    <button onclick="toggleDrawer('ai')" title="AI Assistant">🤖 AI</button>
+    <button onclick="toggleDrawer('notes')" title="Quick Notes">📝</button>
+    <button onclick="toggleDrawer('settings')" title="Privacy & Performance">⚙️</button>
+    <button class="fire" onclick="fireBurn()" title="Fire Button: Burn All Data">🔥</button>
   </div>
-  <webview id="view" src="https://www.google.com"></webview>
+
+  <!-- Horizontal Tab Strip -->
+  <div class="tab-strip" id="hTabStrip"></div>
+
+  <!-- Main Workspace -->
+  <div class="workspace">
+    <!-- Sidebar (Vertical Tabs + Sidebar Messengers) -->
+    <div class="sidebar" id="sidebar">
+      <div class="side-icons">
+        <button onclick="createTab('https://www.google.com')" title="New Tab">+</button>
+        <button onclick="createTab('https://www.google.com', true)" title="Private Tab">🕵️</button>
+        <button onclick="createTab('https://web.whatsapp.com')" title="WhatsApp">💬</button>
+        <button onclick="createTab('https://web.telegram.org')" title="Telegram">✈️</button>
+        <button onclick="openDevTools()" title="Developer Tools (F12)">🛠️</button>
+      </div>
+      <div class="v-tabs-list" id="vTabStrip"></div>
+    </div>
+
+    <!-- Webviews Area -->
+    <div class="views-area" id="viewsArea"></div>
+
+    <!-- Right Drawer -->
+    <div class="drawer" id="rightDrawer">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <strong id="drawerTitle">Panel</strong>
+        <button onclick="closeDrawer()">✕</button>
+      </div>
+      <div id="drawerContent" style="display:flex; flex-direction:column; gap:8px; flex:1;"></div>
+    </div>
+  </div>
+
+  <!-- F2 Quick Commands Modal -->
+  <div class="cmd-modal" id="cmdModal" onclick="if(event.target===this) toggleCmd(false)">
+    <div class="cmd-box">
+      <input id="cmdSearch" type="text" placeholder="Type a command (New Tab, Split, Fire, Reader, DevTools)..." oninput="filterCmds()">
+      <div id="cmdList"></div>
+    </div>
+  </div>
 
   <script>
-    const view = document.getElementById('view');
-    const urlInput = document.getElementById('url');
+    const { ipcRenderer } = require('electron');
+    let tabs = [];
+    let activeId = null;
+    let splitMode = false;
+    let verticalMode = false;
+    let adBlock = true;
+    let httpsOnly = true;
+    let aiEnabled = true;
 
-    function navigate() {
-      let query = urlInput.value.trim();
-      if (!query) return;
-      if (query.includes('.') && !query.includes(' ')) {
-        if (!query.startsWith('http')) query = 'https://' + query;
-      } else {
-        query = 'https://www.google.com/search?q=' + encodeURIComponent(query);
-      }
-      view.loadURL(query);
+    const commands = [
+      { name: '➕ New Tab', action: () => createTab('https://www.google.com') },
+      { name: '🕵️ New Private Incognito Tab', action: () => createTab('https://duckduckgo.com', true) },
+      { name: '◫ Toggle Split Screen (2 Sites)', action: () => toggleSplit() },
+      { name: '◫ Toggle Vertical Tabs Sidebar', action: () => toggleVertical() },
+      { name: '📖 Toggle Reader View (Clean Article)', action: () => toggleReader() },
+      { name: '💤 Sleep Inactive Tabs (Save RAM)', action: () => sleepInactiveTabs() },
+      { name: '🔥 Fire Button (Burn All Tabs & Data)', action: () => fireBurn() },
+      { name: '📷 Capture Page Screenshot', action: () => takeScreenshot() },
+      { name: '🛠️ Open Developer Tools (Inspect)', action: () => openDevTools() }
+    ];
+
+    function createTab(url = 'https://www.google.com', isPrivate = false) {
+      const id = 'tab_' + Date.now() + Math.floor(Math.random() * 100);
+      const wrap = document.createElement('div');
+      wrap.className = 'webview-wrap';
+      wrap.id = 'wrap_' + id;
+
+      const wv = document.createElement('webview');
+      wv.src = url;
+      if (isPrivate) wv.setAttribute('partition', 'private_' + id);
+      wv.setAttribute('allowpopups', '');
+
+      wv.addEventListener('did-navigate', (e) => {
+        updateTabTitle(id, e.url);
+        if (id === activeId) document.getElementById('urlInput').value = e.url;
+      });
+      wv.addEventListener('page-title-updated', (e) => updateTabTitle(id, e.title));
+
+      // Auto-hide Cookie Popups
+      wv.addEventListener('dom-ready', () => {
+        wv.insertCSS(`
+          [id*="cookie" i], [class*="cookie" i], [id*="consent" i], [class*="consent" i] {
+            display: none !important;
+          }
+        `);
+      });
+
+      wrap.appendChild(wv);
+      document.getElementById('viewsArea').appendChild(wrap);
+
+      tabs.push({ id, title: isPrivate ? '🕵️ Private' : 'New Tab', url, pinned: false, isPrivate, lastUsed: Date.now() });
+      switchTab(id);
     }
 
-    function goHome() { view.loadURL('https://www.google.com'); }
-    view.addEventListener('did-navigate', (e) => { urlInput.value = e.url; });
+    function switchTab(id) {
+      activeId = id;
+      const current = tabs.find(t => t.id === id);
+      if (current) current.lastUsed = Date.now();
+
+      const allWraps = document.querySelectorAll('.webview-wrap');
+      allWraps.forEach(w => w.classList.remove('visible'));
+
+      const activeWrap = document.getElementById('wrap_' + id);
+      if (activeWrap) activeWrap.classList.add('visible');
+
+      // Split screen shows active tab + previous tab side-by-side
+      if (splitMode && tabs.length > 1) {
+        const idx = tabs.findIndex(t => t.id === id);
+        const secondTab = tabs[(idx + 1) % tabs.length];
+        document.getElementById('wrap_' + secondTab.id)?.classList.add('visible');
+      }
+
+      const wv = activeView();
+      if (wv) {
+        try { document.getElementById('urlInput').value = wv.getURL() || current.url; } catch {}
+      }
+      renderTabs();
+    }
+
+    function closeTab(id, e) {
+      if (e) e.stopPropagation();
+      const idx = tabs.findIndex(t => t.id === id);
+      if (idx === -1) return;
+      document.getElementById('wrap_' + id)?.remove();
+      tabs.splice(idx, 1);
+      if (tabs.length === 0) return createTab();
+      if (activeId === id) switchTab(tabs[Math.max(0, idx - 1)].id);
+      else renderTabs();
+    }
+
+    function togglePin(id, e) {
+      e.stopPropagation();
+      const t = tabs.find(x => x.id === id);
+      if (t) t.pinned = !t.pinned;
+      tabs.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+      renderTabs();
+    }
+
+    function updateTabTitle(id, title) {
+      const t = tabs.find(x => x.id === id);
+      if (t && title) {
+        t.title = (t.isPrivate ? '🕵️ ' : '') + title;
+        renderTabs();
+      }
+    }
+
+    function renderTabs() {
+      const hStrip = document.getElementById('hTabStrip');
+      const vStrip = document.getElementById('vTabStrip');
+      hStrip.innerHTML = '';
+      vStrip.innerHTML = '';
+
+      tabs.forEach(t => {
+        const makeEl = () => {
+          const el = document.createElement('div');
+          el.className = 'tab' + (t.id === activeId ? ' active' : '') + (t.pinned ? ' pinned' : '');
+          el.onclick = () => switchTab(t.id);
+          el.oncontextmenu = (e) => togglePin(t.id, e);
+          el.innerHTML = `<span class="tab-title" title="Right-click to Pin">${t.title}</span>
+                          <span class="tab-close" onclick="closeTab('${t.id}', event)">✕</span>`;
+          return el;
+        };
+        hStrip.appendChild(makeEl());
+        vStrip.appendChild(makeEl());
+      });
+    }
+
+    function activeView() {
+      return document.querySelector(`#wrap_${activeId} webview`);
+    }
+
+    function handleUrl() {
+      let q = document.getElementById('urlInput').value.trim();
+      if (!q) return;
+      if (q.includes('.') && !q.includes(' ')) {
+        if (!q.startsWith('http')) q = (httpsOnly ? 'https://' : 'http://') + q;
+      } else {
+        q = 'https://www.google.com/search?q=' + encodeURIComponent(q);
+      }
+      navigate(q);
+    }
+
+    function navigate(url) {
+      const wv = activeView();
+      if (wv) wv.loadURL(url);
+    }
+
+    function toggleSplit() {
+      splitMode = !splitMode;
+      document.getElementById('splitBtn').classList.toggle('active', splitMode);
+      switchTab(activeId);
+    }
+
+    function toggleVertical() {
+      verticalMode = !verticalMode;
+      document.getElementById('sidebar').classList.toggle('vertical-open', verticalMode);
+      document.getElementById('hTabStrip').classList.toggle('hidden', verticalMode);
+    }
+
+    function toggleReader() {
+      const wv = activeView();
+      if (!wv) return;
+      wv.executeJavaScript(`
+        document.body.style.maxWidth = '720px';
+        document.body.style.margin = '40px auto';
+        document.body.style.fontSize = '19px';
+        document.body.style.lineHeight = '1.7';
+        document.body.style.background = '#18181b';
+        document.body.style.color = '#e4e4e7';
+        document.querySelectorAll('nav, header, footer, aside, iframe, .ads').forEach(el => el.remove());
+      `);
+    }
+
+    function sleepInactiveTabs() {
+      let count = 0;
+      tabs.forEach(t => {
+        if (t.id !== activeId && !t.pinned) {
+          const wv = document.querySelector(`#wrap_${t.id} webview`);
+          if (wv && wv.src !== 'about:blank') {
+            t.savedUrl = wv.getURL();
+            wv.src = 'about:blank';
+            t.title = '💤 ' + t.title;
+            count++;
+          }
+        }
+      });
+      renderTabs();
+      alert(`${count} inactive tabs put to sleep to save RAM!`);
+    }
+
+    async function fireBurn() {
+      await ipcRenderer.invoke('burn-data');
+      document.getElementById('viewsArea').innerHTML = '';
+      tabs = [];
+      createTab('https://www.google.com');
+      alert('🔥 All tabs, cookies, cache & history burned!');
+    }
+
+    async function takeScreenshot() {
+      const saved = await ipcRenderer.invoke('capture-screen');
+      if (saved) alert('Screenshot saved at:\n' + saved);
+    }
+
+    function openDevTools() {
+      activeView()?.openDevTools();
+    }
+
+    function addBookmark() {
+      const wv = activeView();
+      if (!wv) return;
+      const bm = JSON.parse(localStorage.getItem('fg_bookmarks') || '[]');
+      bm.push({ title: wv.getTitle() || wv.getURL(), url: wv.getURL() });
+      localStorage.setItem('fg_bookmarks', JSON.stringify(bm));
+      alert('⭐ Bookmark Saved!');
+    }
+
+    function toggleDrawer(type) {
+      const drawer = document.getElementById('rightDrawer');
+      const title = document.getElementById('drawerTitle');
+      const content = document.getElementById('drawerContent');
+      drawer.classList.add('open');
+
+      if (type === 'notes') {
+        title.innerText = '📝 Quick Notes';
+        content.innerHTML = `<textarea id="noteArea" placeholder="Write your notes here...">${localStorage.getItem('fg_notes') || ''}</textarea>`;
+        document.getElementById('noteArea').oninput = (e) => localStorage.setItem('fg_notes', e.target.value);
+      } else if (type === 'ai') {
+        title.innerText = '🤖 FlashGo AI Assistant';
+        content.innerHTML = aiEnabled
+          ? `<div class="setting-row"><span>AI Status: Active</span><button onclick="aiEnabled=false; toggleDrawer('ai')">Turn Off AI</button></div>
+             <webview src="https://duckduckgo.com/?q=DuckDuckGo+AI+Chat&ia=chat" style="flex:1; border-radius:8px;"></webview>`
+          : `<div class="setting-row"><span>AI is Completely Off</span><button onclick="aiEnabled=true; toggleDrawer('ai')">Enable AI</button></div>`;
+      } else if (type === 'settings') {
+        title.innerText = '⚙️ Shield & Performance';
+        const bm = JSON.parse(localStorage.getItem('fg_bookmarks') || '[]');
+        content.innerHTML = `
+          <div class="setting-row"><span>🛡️ Ad & Tracker Blocker</span><input type="checkbox" ${adBlock ? 'checked' : ''} onchange="adBlock=this.checked; ipcRenderer.send('toggle-adblock', adBlock)"></div>
+          <div class="setting-row"><span>🔒 HTTPS-Only Mode</span><input type="checkbox" ${httpsOnly ? 'checked' : ''} onchange="httpsOnly=this.checked; ipcRenderer.send('toggle-https', httpsOnly)"></div>
+          <button onclick="sleepInactiveTabs()">💤 Sleep Inactive Tabs (RAM Saver)</button>
+          <strong style="margin-top:8px;">⭐ Saved Bookmarks</strong>
+          <div style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:4px;">
+            ${bm.map(b => `<button style="text-align:left;" onclick="navigate('${b.url}')">${b.title}</button>`).join('') || '<small>No bookmarks yet</small>'}
+          </div>
+        `;
+      }
+    }
+
+    function closeDrawer() { document.getElementById('rightDrawer').classList.remove('open'); }
+
+    // Command Palette (F2) & DevTools (F12)
+    function toggleCmd(show) {
+      const modal = document.getElementById('cmdModal');
+      modal.classList.toggle('open', show);
+      if (show) {
+        document.getElementById('cmdSearch').value = '';
+        filterCmds();
+        document.getElementById('cmdSearch').focus();
+      }
+    }
+
+    function filterCmds() {
+      const q = document.getElementById('cmdSearch').value.toLowerCase();
+      const list = document.getElementById('cmdList');
+      list.innerHTML = '';
+      commands.filter(c => c.name.toLowerCase().includes(q)).forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'cmd-item';
+        div.innerText = c.name;
+        div.onclick = () => { toggleCmd(false); c.action(); };
+        list.appendChild(div);
+      });
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'F2') toggleCmd(true);
+      if (e.key === 'F12') openDevTools();
+      if (e.key === 'Escape') toggleCmd(false);
+    });
+
+    // Start first tab
+    createTab('https://www.google.com');
   </script>
 </body>
 </html>
